@@ -2,9 +2,12 @@ import asyncio
 import os
 import re
 import sys
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 # Install necessary packages
-!pip install litellm nest_asyncio
+!pip install litellm nest_asyncio sentence-transformers
 
 import litellm
 import nest_asyncio
@@ -21,27 +24,59 @@ if sys.platform == 'win32':
 # =====================================================================
 # ƒ DIRECT API KEY ASSIGNMENT (Bypasses Windows Terminal Environment)
 # =====================================================================
-os.environ["Gemma_API_KEY"] = "##"
-os.environ["GEMINI_API_KEY"] = "##"
-# =====================================================================
+os.environ["Gemma_API_KEY"] = "AIzaSyAvDL3OEAab8FiyL5wLl_Y9tDm9QhOel24"
+os.environ["GEMINI_API_KEY"] = "AIzaSyDT7yfUGfn5nyai1FUcqwuQyIFZh1JrRa8"
+# =================================================0====================
 
 # =====================================================================
-# ƒ RAG (Retrieval Augmented Generation) Placeholder
+# ƒ RAG (Retrieval Augmented Generation) Enhancement
 # =====================================================================
-def retrieve_context(query: str) -> str:
+print("Loading Sentence Transformer model...")
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+print("Model loaded.")
+
+# Sample knowledge base for demonstration
+knowledge_base = {
+    "apple_company": "Apple Inc. is an American multinational technology company headquartered in Cupertino, California. It designs, develops, and sells consumer electronics, computer software, and online services. Its hardware products include the iPhone smartphone, the iPad tablet computer, the Mac personal computer, the Apple Watch smartwatch, the Apple Vision Pro mixed-reality headset, and the AirPods wireless earbuds. Its services include the App Store, Apple Music, Apple TV+, and iCloud. Founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976.",
+    "quantum_computing": "Quantum computing is a type of computation that harnesses the phenomena of quantum mechanics, such as superposition and entanglement, to solve complex problems that classical computers cannot. It involves qubits, which can represent 0, 1, or both simultaneously. Major players include IBM, Google, and Microsoft.",
+    "software_testing_qa_qc": "In software testing, QA (Quality Assurance) is a proactive process focused on preventing defects throughout the development lifecycle, ensuring quality by establishing processes and standards. QC (Quality Control) is a reactive process focused on identifying defects in the finished product through testing and inspection. QA focuses on 'how to prevent bugs', while QC focuses on 'how to find bugs'.",
+    "artificial_intelligence": "Artificial intelligence (AI) is a broad field of computer science that gives computers the ability to perform human-like tasks, such as learning, problem-solving, and decision-making. Machine learning is a subset of AI that uses statistical techniques to enable systems to 'learn' from data without being explicitly programmed.",
+    "large_language_models": "Large Language Models (LLMs) are a type of artificial intelligence program that can recognize and generate text, among other tasks. They are trained on vast amounts of text data, allowing them to understand and generate human-like language. Examples include GPT series, LaMDA, and PaLM."
+}
+
+# Generate embeddings for the knowledge base documents
+print("Generating embeddings for the knowledge base...")
+knowledge_base_embeddings = {
+    key: embedding_model.encode(value, convert_to_tensor=True)
+    for key, value in knowledge_base.items()
+}
+print("Embeddings generated.")
+
+async def retrieve_context(query: str) -> str:
     """
-    Simulates a RAG system by returning a relevant context based on the query.
-    In a real application, this would query a knowledge base or search engine.
+    Retrieves the most semantically similar context from the knowledge base
+    using sentence embeddings and cosine similarity.
     """
-    if "apple company" in query.lower() or "apple inc" in query.lower():
-        return """Apple Inc. is an American multinational technology company headquartered in Cupertino, California. It designs, develops, and sells consumer electronics, computer software, and online services. Its hardware products include the iPhone smartphone, the iPad tablet computer, the Mac personal computer, the Apple Watch smartwatch, the Apple Vision Pro mixed-reality headset, and the AirPods wireless earbuds. Its services include the App Store, Apple Music, Apple TV+, and iCloud.
-        Founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976.
-        """
-    elif "quantum computing" in query.lower():
-        return """Quantum computing is a type of computation that harnesses the phenomena of quantum mechanics, such as superposition and entanglement, to solve complex problems that classical computers cannot. It involves qubits, which can represent 0, 1, or both simultaneously.
-        Major players include IBM, Google, and Microsoft.
-        """
+    query_embedding = embedding_model.encode(query, convert_to_tensor=True)
+
+    highest_similarity = -1
+    best_context_key = None
+
+    for key, doc_embedding in knowledge_base_embeddings.items():
+        similarity = cosine_similarity(query_embedding.reshape(1, -1), doc_embedding.reshape(1, -1))[0][0]
+        if similarity > highest_similarity:
+            highest_similarity = similarity
+            best_context_key = key
+
+    # Define a similarity threshold for returning context
+    # You might need to tune this threshold based on your dataset
+    similarity_threshold = 0.5
+
+    if highest_similarity > similarity_threshold and best_context_key is not None:
+        print(f"Retrieved context for query: '{query[:50]}...' with similarity: {highest_similarity:.2f}")
+        return knowledge_base[best_context_key]
     else:
+        print(f"No relevant context found for query: '{query[:50]}...' (highest similarity: {highest_similarity:.2f})")
         return "No specific external context found for this query."
 # =====================================================================
 
@@ -51,7 +86,7 @@ async def get_model_response(model_name: str, prompt: str) -> dict:
     and a self-evaluated confidence score inside a clean layout structure.
     """
     # Integrate RAG context into the prompt
-    external_context = retrieve_context(prompt)
+    external_context = await retrieve_context(prompt)
     if external_context and external_context != "No specific external context found for this query.":
         context_injection = f"\n\n### EXTERNAL CONTEXT (Provided by RAG System):\n{external_context}\n\n"
     else:
