@@ -24,8 +24,8 @@ if sys.platform == 'win32':
 # =====================================================================
 # ƒ„ DIRECT API KEY ASSIGNMENT (Bypasses Windows Terminal Environment)
 # =====================================================================
-os.environ["Gemma_API_KEY"] = "AIzaSyAvDL3OEAab8FiyL5wLl_Y9tDm9QhOel24"
-os.environ["GEMINI_API_KEY"] = "AIzaSyDT7yfUGfn5nyai1FUcqwuQyIFZh1JrRa8"
+os.environ["Gemma_API_KEY"] = "AQ.Ab8RN6J_rjnc7cAe0UbxBu9i6JdJBgL3WJQ3tntZuflJfwTSpQ"
+os.environ["GEMINI_API_KEY"] = "AQ.Ab8RN6LhyGu67tqXprY2R_0FuCR03WmXf_TsQvSUHzLbDGHc5Q"
 # =================================================0====================
 
 # =====================================================================
